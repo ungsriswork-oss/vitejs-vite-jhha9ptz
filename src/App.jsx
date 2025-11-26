@@ -557,19 +557,47 @@ const DrugFormModal = ({ initialData, onClose, onSave }) => {
   );
 };
 
+const base64ToBlob = (base64, type = 'application/pdf') => {
+  const binStr = atob(base64.split(',')[1]);
+  const len = binStr.length;
+  const arr = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    arr[i] = binStr.charCodeAt(i);
+  }
+  return new Blob([arr], { type: type });
+};
+
 const DetailModal = ({ drug, onClose, onEdit, onDelete, isAdmin }) => {
   const [showLeaflet, setShowLeaflet] = useState(false);
+  const [blobUrl, setBlobUrl] = useState(null); 
+
   const displayImage = getDisplayImageUrl(drug.image);
   const displayLeaflet = getDisplayImageUrl(drug.leaflet);
   const isPdf = (url) => url?.startsWith('data:application/pdf');
+  
   const InfoItem = ({ icon, label, value }) => (<div><div className="flex items-center gap-1 text-slate-500 text-xs mb-1">{icon} {label}</div><div className="font-medium text-slate-800">{value || "-"}</div></div>);
   const Row = ({ label, value }) => (<div className="flex justify-between items-start text-sm"><span className="text-slate-500 min-w-[100px] shrink-0">{label}:</span><span className="text-slate-800 font-medium text-right flex-1 whitespace-pre-wrap">{value || "-"}</span></div>);
-  
+
+  const handleOpenLeaflet = () => {
+    if (displayLeaflet && displayLeaflet.startsWith('data:application/pdf')) {
+      try {
+        const blob = base64ToBlob(displayLeaflet);
+        const url = URL.createObjectURL(blob);
+        setBlobUrl(url);
+      } catch (e) {
+        console.error("Error creating blob", e);
+        setBlobUrl(displayLeaflet);
+      }
+    } else {
+      setBlobUrl(displayLeaflet);
+    }
+    setShowLeaflet(true);
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
       <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         
-        {/* Header */}
         <div className="bg-slate-800 text-white p-4 flex justify-between items-center sticky top-0 z-10">
           <div className="overflow-hidden"><h2 className="text-xl font-bold truncate pr-2">{drug.genericName}</h2><p className="text-slate-300 text-sm truncate">{drug.brandName}</p></div>
           <div className="flex items-center gap-2 shrink-0">
@@ -577,7 +605,6 @@ const DetailModal = ({ drug, onClose, onEdit, onDelete, isAdmin }) => {
           </div>
         </div>
 
-        {/* Content */}
         <div className="p-0 overflow-y-auto custom-scrollbar bg-white">
           <div className="w-full h-64 bg-slate-100 flex items-center justify-center relative"><MediaDisplay src={displayImage} alt={drug.genericName} className="w-full h-full object-contain" isPdf={isPdf(displayImage)} /><div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">รูปผลิตภัณฑ์</div></div>
           <div className="p-6 space-y-6">
@@ -585,62 +612,28 @@ const DetailModal = ({ drug, onClose, onEdit, onDelete, isAdmin }) => {
             <hr className="border-slate-100" />
             <div className="space-y-4"><h3 className="font-semibold text-slate-800 flex items-center gap-2"><Shield size={18} className="text-emerald-500" /> การสั่งใช้และกฎหมาย</h3><div className="bg-slate-50 p-4 rounded-lg space-y-3"><Row label="ประเภทบัญชียา" value={drug.category} /><Row label="แพทย์ผู้สามารถสั่งใช้" value={drug.prescriber} /><Row label="สามารถสั่งใช้ได้ใน" value={drug.usageType} /></div></div>
             {drug.type === 'injection' && (<div className="space-y-4"><h3 className="font-semibold text-slate-800 flex items-center gap-2"><Thermometer size={18} className="text-rose-500" /> การผสมและการเก็บรักษา</h3><div className="bg-rose-50 p-4 rounded-lg space-y-3 border border-rose-100"><Row label="สารละลายที่ใช้" value={drug.diluent} /><Row label="ความคงตัว" value={drug.stability} /><Row label="วิธีการบริหาร" value={drug.administration} /></div></div>)}
-            {drug.leaflet && (<button onClick={() => setShowLeaflet(true)} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"><FileText size={20} /> ดูเอกสารกำกับยา (Leaflet)</button>)}
+            
+            {drug.leaflet && (<button onClick={handleOpenLeaflet} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"><FileText size={20} /> ดูเอกสารกำกับยา (Leaflet)</button>)}
           </div>
         </div>
       </div>
 
-      {/* --- ส่วนแสดง PDF (ปรับปรุงสำหรับ iPhone/iPad) --- */}
       {showLeaflet && (
-        <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col h-[100dvh]"> {/* ใช้ 100dvh เพื่อแก้ปัญหา Safari Address bar */}
-          
-          {/* 1. Header PDF: เพิ่มปุ่ม Download ไว้ข้างบนด้วย */}
-          <div className="flex justify-between items-center p-4 bg-slate-900 text-white shrink-0 z-20 shadow-md">
-             <div className="flex flex-col">
-                <span className="font-bold">เอกสารกำกับยา</span>
-                <a href={displayLeaflet} download={`leaflet-${drug.genericName}.pdf`} className="text-xs text-blue-300 hover:text-blue-200 underline mt-1 md:hidden">
-                   แตะเพื่อเปิดไฟล์ (ถ้ามองไม่เห็น)
-                </a>
-             </div>
-             <button onClick={() => setShowLeaflet(false)} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full"><X size={24}/></button>
+        <div className="fixed inset-0 bg-slate-900 z-[9999] flex flex-col h-screen w-screen"> 
+          <div className="flex justify-between items-center p-4 bg-slate-800 text-white shadow-md shrink-0">
+             <h3 className="font-bold flex items-center gap-2"><FileText size={20}/> เอกสารกำกับยา</h3>
+             <button onClick={() => setShowLeaflet(false)} className="p-2 bg-slate-700 hover:bg-slate-600 rounded-full"><X size={24}/></button>
           </div>
-
-          {/* 2. พื้นที่แสดงผล: ใช้ overflow-y-auto และ -webkit-overflow-scrolling */}
-          <div className="flex-1 bg-slate-200 relative w-full overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-             {/* ซ่อน iframe ในมือถือบางรุ่นที่จอมันเล็กเกินไป แล้วให้ใช้ปุ่มโหลดแทน */}
-             <div className="w-full min-h-full flex flex-col items-center justify-center p-4 md:p-0">
-                <object 
-                  data={displayLeaflet} 
-                  type="application/pdf" 
-                  className="w-full h-full min-h-[60vh] md:min-h-full block rounded shadow-lg bg-white"
-                >
-                    {/* Fallback ถ้าเปิดไม่ได้ (แสดงผลใน object ไม่ได้) */}
-                    <div className="flex flex-col items-center justify-center h-full py-10 text-slate-500">
-                      <FileIcon size={48} className="mb-4 opacity-50"/>
-                      <p>อุปกรณ์นี้ไม่รองรับการแสดงตัวอย่างในแอป</p>
-                    </div>
-                </object>
-             </div>
+          <div className="flex-1 bg-slate-200 relative w-full h-full overflow-hidden">
+             <iframe src={blobUrl} className="w-full h-full absolute inset-0 border-0" title="PDF Preview"></iframe>
           </div>
-
-          {/* 3. Footer: ปุ่ม Download หลัก (บังคับอยู่บนสุดด้วย z-index สูงๆ) */}
-          <div className="p-4 bg-white border-t shrink-0 flex justify-center pb-8 md:pb-4 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-             <a 
-               href={displayLeaflet} 
-               download={`leaflet-${drug.genericName}.pdf`}
-               target="_blank"
-               rel="noreferrer"
-               className="w-full md:w-auto flex items-center justify-center gap-2 bg-blue-600 text-white font-bold hover:bg-blue-700 px-6 py-3 rounded-xl shadow-lg active:scale-95 transition-all"
-             >
-               <ExternalLink size={20} />
-               <span>เปิดไฟล์ PDF เต็มจอ / ดาวน์โหลด</span>
+          <div className="p-4 bg-white border-t flex justify-center gap-3 shrink-0">
+             <a href={blobUrl} download={`leaflet-${drug.genericName}.pdf`} className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-bold shadow hover:bg-blue-700 active:scale-95 transition-transform">
+               <ExternalLink size={20} /> ดาวน์โหลด / เปิดไฟล์
              </a>
           </div>
-
         </div>
       )}
-      {/* ------------------------------------------------ */}
-
     </div>
   );
 };
