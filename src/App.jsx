@@ -570,7 +570,7 @@ const DetailModal = ({ drug, onClose, onEdit, onDelete, isAdmin }) => {
       <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Header */}
-        <div className="bg-slate-800 text-white p-4 flex justify-between items-center sticky top-0">
+        <div className="bg-slate-800 text-white p-4 flex justify-between items-center sticky top-0 z-10">
           <div className="overflow-hidden"><h2 className="text-xl font-bold truncate pr-2">{drug.genericName}</h2><p className="text-slate-300 text-sm truncate">{drug.brandName}</p></div>
           <div className="flex items-center gap-2 shrink-0">
             {isAdmin && (<><button onClick={onEdit} className="p-2 bg-slate-700 hover:bg-slate-600 rounded-full transition-colors text-yellow-400" title="แก้ไข"><Edit size={18} /></button><button onClick={() => onDelete(drug.id)} className="p-2 bg-slate-700 hover:bg-red-600 rounded-full transition-colors text-red-400 hover:text-white" title="ลบ"><Trash2 size={18} /></button></>)}<button onClick={onClose} className="p-2 hover:bg-slate-700 rounded-full transition-colors"><X size={24} /></button>
@@ -578,7 +578,7 @@ const DetailModal = ({ drug, onClose, onEdit, onDelete, isAdmin }) => {
         </div>
 
         {/* Content */}
-        <div className="p-0 overflow-y-auto custom-scrollbar">
+        <div className="p-0 overflow-y-auto custom-scrollbar bg-white">
           <div className="w-full h-64 bg-slate-100 flex items-center justify-center relative"><MediaDisplay src={displayImage} alt={drug.genericName} className="w-full h-full object-contain" isPdf={isPdf(displayImage)} /><div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">รูปผลิตภัณฑ์</div></div>
           <div className="p-6 space-y-6">
             <div className="grid grid-cols-2 gap-4"><InfoItem icon={<Building size={16}/>} label="ผู้ผลิต" value={drug.manufacturer} /><InfoItem icon={<Pill size={16}/>} label="รูปแบบ/ความแรง" value={drug.dosage} /></div>
@@ -590,44 +590,53 @@ const DetailModal = ({ drug, onClose, onEdit, onDelete, isAdmin }) => {
         </div>
       </div>
 
-      {/* --- ส่วนแสดง PDF แบบแก้ไขใหม่ (อยู่ภายใน DetailModal) --- */}
+      {/* --- ส่วนแสดง PDF (ปรับปรุงสำหรับ iPhone/iPad) --- */}
       {showLeaflet && (
-        <div className="fixed inset-0 bg-black/90 z-[100] flex flex-col items-center justify-center p-4">
-          <div className="bg-white w-full max-w-4xl rounded-lg flex flex-col h-[90vh] overflow-hidden relative">
-            
-            {/* 1. หัวข้อ PDF */}
-            <div className="flex justify-between items-center p-4 border-b bg-slate-50 shrink-0">
-              <span className="font-bold text-lg">เอกสารกำกับยา (PDF)</span>
-              <button onClick={() => setShowLeaflet(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
-                <X size={24}/>
-              </button>
-            </div>
-
-            {/* 2. พื้นที่แสดงผล PDF (บังคับความสูงด้วย style) */}
-            <div className="flex-1 bg-slate-200 relative w-full" style={{ minHeight: '500px' }}>
-               <iframe 
-                  src={displayLeaflet} 
-                  className="w-full h-full absolute inset-0" 
-                  title="PDF Viewer"
-               ></iframe>
-            </div>
-
-            {/* 3. ปุ่มสำรอง */}
-            <div className="p-4 bg-white border-t shrink-0 flex justify-center gap-4">
-               <span className="text-slate-500 text-sm flex items-center">
-                 มองไม่เห็นเอกสาร? 
-               </span>
-               <a 
-                 href={displayLeaflet} 
-                 download={`leaflet-${drug.genericName}.pdf`}
-                 className="flex items-center gap-2 text-blue-600 font-bold hover:underline bg-blue-50 px-4 py-2 rounded-lg"
-               >
-                 <ExternalLink size={16} />
-                 ดาวน์โหลด / เปิดไฟล์ภายนอก
-               </a>
-            </div>
-
+        <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col h-[100dvh]"> {/* ใช้ 100dvh เพื่อแก้ปัญหา Safari Address bar */}
+          
+          {/* 1. Header PDF: เพิ่มปุ่ม Download ไว้ข้างบนด้วย */}
+          <div className="flex justify-between items-center p-4 bg-slate-900 text-white shrink-0 z-20 shadow-md">
+             <div className="flex flex-col">
+                <span className="font-bold">เอกสารกำกับยา</span>
+                <a href={displayLeaflet} download={`leaflet-${drug.genericName}.pdf`} className="text-xs text-blue-300 hover:text-blue-200 underline mt-1 md:hidden">
+                   แตะเพื่อเปิดไฟล์ (ถ้ามองไม่เห็น)
+                </a>
+             </div>
+             <button onClick={() => setShowLeaflet(false)} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full"><X size={24}/></button>
           </div>
+
+          {/* 2. พื้นที่แสดงผล: ใช้ overflow-y-auto และ -webkit-overflow-scrolling */}
+          <div className="flex-1 bg-slate-200 relative w-full overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+             {/* ซ่อน iframe ในมือถือบางรุ่นที่จอมันเล็กเกินไป แล้วให้ใช้ปุ่มโหลดแทน */}
+             <div className="w-full min-h-full flex flex-col items-center justify-center p-4 md:p-0">
+                <object 
+                  data={displayLeaflet} 
+                  type="application/pdf" 
+                  className="w-full h-full min-h-[60vh] md:min-h-full block rounded shadow-lg bg-white"
+                >
+                    {/* Fallback ถ้าเปิดไม่ได้ (แสดงผลใน object ไม่ได้) */}
+                    <div className="flex flex-col items-center justify-center h-full py-10 text-slate-500">
+                      <FileIcon size={48} className="mb-4 opacity-50"/>
+                      <p>อุปกรณ์นี้ไม่รองรับการแสดงตัวอย่างในแอป</p>
+                    </div>
+                </object>
+             </div>
+          </div>
+
+          {/* 3. Footer: ปุ่ม Download หลัก (บังคับอยู่บนสุดด้วย z-index สูงๆ) */}
+          <div className="p-4 bg-white border-t shrink-0 flex justify-center pb-8 md:pb-4 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+             <a 
+               href={displayLeaflet} 
+               download={`leaflet-${drug.genericName}.pdf`}
+               target="_blank"
+               rel="noreferrer"
+               className="w-full md:w-auto flex items-center justify-center gap-2 bg-blue-600 text-white font-bold hover:bg-blue-700 px-6 py-3 rounded-xl shadow-lg active:scale-95 transition-all"
+             >
+               <ExternalLink size={20} />
+               <span>เปิดไฟล์ PDF เต็มจอ / ดาวน์โหลด</span>
+             </a>
+          </div>
+
         </div>
       )}
       {/* ------------------------------------------------ */}
