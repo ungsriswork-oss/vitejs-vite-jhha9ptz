@@ -562,140 +562,76 @@ const DetailModal = ({ drug, onClose, onEdit, onDelete, isAdmin }) => {
   const displayImage = getDisplayImageUrl(drug.image);
   const displayLeaflet = getDisplayImageUrl(drug.leaflet);
   const isPdf = (url) => url?.startsWith('data:application/pdf');
-  const InfoItem = ({ icon, label, value }) => (
-    <div>
-      <div className="flex items-center gap-1 text-slate-500 text-xs mb-1">
-        {icon} {label}
-      </div>
-      <div className="font-medium text-slate-800">{value || '-'}</div>
-    </div>
-  );
-  const Row = ({ label, value }) => (
-    <div className="flex justify-between items-start text-sm">
-      <span className="text-slate-500 min-w-[100px] shrink-0">{label}:</span>
-      <span className="text-slate-800 font-medium text-right flex-1 whitespace-pre-wrap">
-        {value || '-'}
-      </span>
-    </div>
-  );
+  const InfoItem = ({ icon, label, value }) => (<div><div className="flex items-center gap-1 text-slate-500 text-xs mb-1">{icon} {label}</div><div className="font-medium text-slate-800">{value || "-"}</div></div>);
+  const Row = ({ label, value }) => (<div className="flex justify-between items-start text-sm"><span className="text-slate-500 min-w-[100px] shrink-0">{label}:</span><span className="text-slate-800 font-medium text-right flex-1 whitespace-pre-wrap">{value || "-"}</span></div>);
+  
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
       <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        
+        {/* Header */}
         <div className="bg-slate-800 text-white p-4 flex justify-between items-center sticky top-0">
-          <div className="overflow-hidden">
-            <h2 className="text-xl font-bold truncate pr-2">
-              {drug.genericName}
-            </h2>
-            <p className="text-slate-300 text-sm truncate">{drug.brandName}</p>
-          </div>
+          <div className="overflow-hidden"><h2 className="text-xl font-bold truncate pr-2">{drug.genericName}</h2><p className="text-slate-300 text-sm truncate">{drug.brandName}</p></div>
           <div className="flex items-center gap-2 shrink-0">
-            {isAdmin && (
-              <>
-                <button
-                  onClick={onEdit}
-                  className="p-2 bg-slate-700 hover:bg-slate-600 rounded-full transition-colors text-yellow-400"
-                  title="แก้ไข"
-                >
-                  <Edit size={18} />
-                </button>
-                <button
-                  onClick={() => onDelete(drug.id)}
-                  className="p-2 bg-slate-700 hover:bg-red-600 rounded-full transition-colors text-red-400 hover:text-white"
-                  title="ลบ"
-                >
-                  <Trash2 size={18} />
-                </button>
-              </>
-            )}
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-slate-700 rounded-full transition-colors"
-            >
-              <X size={24} />
-            </button>
+            {isAdmin && (<><button onClick={onEdit} className="p-2 bg-slate-700 hover:bg-slate-600 rounded-full transition-colors text-yellow-400" title="แก้ไข"><Edit size={18} /></button><button onClick={() => onDelete(drug.id)} className="p-2 bg-slate-700 hover:bg-red-600 rounded-full transition-colors text-red-400 hover:text-white" title="ลบ"><Trash2 size={18} /></button></>)}<button onClick={onClose} className="p-2 hover:bg-slate-700 rounded-full transition-colors"><X size={24} /></button>
           </div>
         </div>
+
+        {/* Content */}
         <div className="p-0 overflow-y-auto custom-scrollbar">
-          <div className="w-full h-64 bg-slate-100 flex items-center justify-center relative">
-            <MediaDisplay
-              src={displayImage}
-              alt={drug.genericName}
-              className="w-full h-full object-contain"
-              isPdf={isPdf(displayImage)}
-            />
-            <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
-              รูปผลิตภัณฑ์
-            </div>
-          </div>
+          <div className="w-full h-64 bg-slate-100 flex items-center justify-center relative"><MediaDisplay src={displayImage} alt={drug.genericName} className="w-full h-full object-contain" isPdf={isPdf(displayImage)} /><div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">รูปผลิตภัณฑ์</div></div>
           <div className="p-6 space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <InfoItem
-                icon={<Building size={16} />}
-                label="ผู้ผลิต"
-                value={drug.manufacturer}
-              />
-              <InfoItem
-                icon={<Pill size={16} />}
-                label="รูปแบบ/ความแรง"
-                value={drug.dosage}
-              />
-            </div>
+            <div className="grid grid-cols-2 gap-4"><InfoItem icon={<Building size={16}/>} label="ผู้ผลิต" value={drug.manufacturer} /><InfoItem icon={<Pill size={16}/>} label="รูปแบบ/ความแรง" value={drug.dosage} /></div>
             <hr className="border-slate-100" />
-            <div className="space-y-4">
-              <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-                <Shield size={18} className="text-emerald-500" />{' '}
-                การสั่งใช้และกฎหมาย
-              </h3>
-              <div className="bg-slate-50 p-4 rounded-lg space-y-3">
-                <Row label="ประเภทบัญชียา" value={drug.category} />
-                <Row label="แพทย์ผู้สามารถสั่งใช้" value={drug.prescriber} />
-                <Row label="สามารถสั่งใช้ได้ใน" value={drug.usageType} />
-              </div>
-            </div>
-            {drug.type === 'injection' && (
-              <div className="space-y-4">
-                <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-                  <Thermometer size={18} className="text-rose-500" />{' '}
-                  การผสมและการเก็บรักษา
-                </h3>
-                <div className="bg-rose-50 p-4 rounded-lg space-y-3 border border-rose-100">
-                  <Row label="สารละลายที่ใช้" value={drug.diluent} />
-                  <Row label="ความคงตัว" value={drug.stability} />
-                  <Row label="วิธีการบริหาร" value={drug.administration} />
-                </div>
-              </div>
-            )}
-            {drug.leaflet && (
-              <button
-                onClick={() => setShowLeaflet(true)}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
-              >
-                <FileText size={20} /> ดูเอกสารกำกับยา (Leaflet)
-              </button>
-            )}
+            <div className="space-y-4"><h3 className="font-semibold text-slate-800 flex items-center gap-2"><Shield size={18} className="text-emerald-500" /> การสั่งใช้และกฎหมาย</h3><div className="bg-slate-50 p-4 rounded-lg space-y-3"><Row label="ประเภทบัญชียา" value={drug.category} /><Row label="แพทย์ผู้สามารถสั่งใช้" value={drug.prescriber} /><Row label="สามารถสั่งใช้ได้ใน" value={drug.usageType} /></div></div>
+            {drug.type === 'injection' && (<div className="space-y-4"><h3 className="font-semibold text-slate-800 flex items-center gap-2"><Thermometer size={18} className="text-rose-500" /> การผสมและการเก็บรักษา</h3><div className="bg-rose-50 p-4 rounded-lg space-y-3 border border-rose-100"><Row label="สารละลายที่ใช้" value={drug.diluent} /><Row label="ความคงตัว" value={drug.stability} /><Row label="วิธีการบริหาร" value={drug.administration} /></div></div>)}
+            {drug.leaflet && (<button onClick={() => setShowLeaflet(true)} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"><FileText size={20} /> ดูเอกสารกำกับยา (Leaflet)</button>)}
           </div>
         </div>
       </div>
+
+      {/* --- ส่วนแสดง PDF แบบแก้ไขใหม่ (อยู่ภายใน DetailModal) --- */}
       {showLeaflet && (
-        <div className="absolute inset-0 bg-black z-[60] flex flex-col items-center justify-center p-4">
-          <div className="w-full max-w-4xl bg-white p-2 rounded-lg relative flex flex-col h-[90vh]">
-            <div className="flex justify-between items-center mb-2 px-2 shrink-0">
-              <span className="font-bold">เอกสารกำกับยา</span>
-              <button onClick={() => setShowLeaflet(false)}>
-                <X size={24} />
+        <div className="fixed inset-0 bg-black/90 z-[100] flex flex-col items-center justify-center p-4">
+          <div className="bg-white w-full max-w-4xl rounded-lg flex flex-col h-[90vh] overflow-hidden relative">
+            
+            {/* 1. หัวข้อ PDF */}
+            <div className="flex justify-between items-center p-4 border-b bg-slate-50 shrink-0">
+              <span className="font-bold text-lg">เอกสารกำกับยา (PDF)</span>
+              <button onClick={() => setShowLeaflet(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                <X size={24}/>
               </button>
             </div>
-            <div className="flex-1 overflow-auto bg-slate-100 rounded flex items-center justify-center relative">
-              <MediaDisplay
-                src={displayLeaflet}
-                alt="Leaflet"
-                className="w-full h-full object-contain"
-                isPdf={isPdf(displayLeaflet)}
-              />
+
+            {/* 2. พื้นที่แสดงผล PDF (บังคับความสูงด้วย style) */}
+            <div className="flex-1 bg-slate-200 relative w-full" style={{ minHeight: '500px' }}>
+               <iframe 
+                  src={displayLeaflet} 
+                  className="w-full h-full absolute inset-0" 
+                  title="PDF Viewer"
+               ></iframe>
             </div>
+
+            {/* 3. ปุ่มสำรอง */}
+            <div className="p-4 bg-white border-t shrink-0 flex justify-center gap-4">
+               <span className="text-slate-500 text-sm flex items-center">
+                 มองไม่เห็นเอกสาร? 
+               </span>
+               <a 
+                 href={displayLeaflet} 
+                 download={`leaflet-${drug.genericName}.pdf`}
+                 className="flex items-center gap-2 text-blue-600 font-bold hover:underline bg-blue-50 px-4 py-2 rounded-lg"
+               >
+                 <ExternalLink size={16} />
+                 ดาวน์โหลด / เปิดไฟล์ภายนอก
+               </a>
+            </div>
+
           </div>
         </div>
       )}
+      {/* ------------------------------------------------ */}
+
     </div>
   );
 };
