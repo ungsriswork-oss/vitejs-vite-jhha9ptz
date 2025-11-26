@@ -96,20 +96,36 @@ const MediaDisplay = ({ src, alt, className, isPdf }) => {
     );
   }
 
-  // --- ส่วนที่แก้ไข: ปรับให้แสดง PDF ได้ทั้งตอนพรีวิวและตอนเปิดเต็มจอ ---
+  // --- ส่วนที่แก้ไข: เปลี่ยน iframe เป็น object และเพิ่มปุ่มสำรอง ---
   if (isPdf || (src.startsWith('data:application/pdf'))) {
+    // กรณี: หน้าจอแสดงผลเต็ม (ตอนกดดู Leaflet)
+    if (className.includes('h-full')) {
+      return (
+        <div className={`bg-slate-200 relative w-full h-full flex items-center justify-center ${className}`}>
+          {/* ใช้ object แทน iframe เพื่อการแสดงผลที่ดีกว่า */}
+          <object data={src} type="application/pdf" className="w-full h-full absolute inset-0 z-10">
+            {/* ถ้า Browser แสดงผลไม่ได้ จะโชว์ปุ่มนี้แทน */}
+            <div className="flex flex-col items-center justify-center h-full bg-white p-4">
+              <p className="text-slate-500 mb-4 font-medium">ไม่สามารถแสดงตัวอย่างในหน้านี้ได้</p>
+              <a 
+                href={src} 
+                download="leaflet.pdf" 
+                className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors shadow-lg"
+              >
+                <FileIcon size={20} />
+                ดาวน์โหลด / เปิดไฟล์ PDF
+              </a>
+            </div>
+          </object>
+        </div>
+      );
+    }
+
+    // กรณี: หน้าจอพรีวิวเล็ก (รูปไอคอน)
     return (
       <div className={`bg-slate-100 relative flex flex-col items-center justify-center text-slate-500 border border-slate-200 ${className}`}>
-        {/* ถ้าเป็นหน้าจอใหญ่ (h-full) ให้โชว์ไฟล์ PDF เลย */}
-        {className.includes('h-full') ? (
-           <iframe src={src} className="w-full h-full absolute inset-0" title="PDF Preview"></iframe>
-        ) : (
-           /* ถ้าเป็นจอเล็ก (preview) ให้โชว์แค่ไอคอน */
-           <>
-             <FileIcon size={40} className="text-red-500 mb-2"/>
-             <span className="text-xs font-medium">เอกสาร PDF</span>
-           </>
-        )}
+        <FileIcon size={40} className="text-red-500 mb-2"/>
+        <span className="text-xs font-medium">เอกสาร PDF</span>
       </div>
     );
   }
