@@ -557,19 +557,25 @@ const DrugFormModal = ({ initialData, onClose, onSave }) => {
   );
 };
 
+// --- ฟังก์ชันแปลง Base64 เป็น Blob ---
 const base64ToBlob = (base64, type = 'application/pdf') => {
-  const binStr = atob(base64.split(',')[1]);
-  const len = binStr.length;
-  const arr = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    arr[i] = binStr.charCodeAt(i);
+  try {
+    const binStr = atob(base64.split(',')[1]);
+    const len = binStr.length;
+    const arr = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      arr[i] = binStr.charCodeAt(i);
+    }
+    return new Blob([arr], { type: type });
+  } catch (e) {
+    console.error("Blob conversion error", e);
+    return null;
   }
-  return new Blob([arr], { type: type });
 };
 
 const DetailModal = ({ drug, onClose, onEdit, onDelete, isAdmin }) => {
-  const [showLeaflet, setShowLeaflet] = useState(false);
-  const [blobUrl, setBlobUrl] = useState(null); 
+  const [showLeafletModal, setShowLeafletModal] = useState(false); // เปลี่ยนชื่อตัวแปรให้ชัดเจน
+  const [blobUrl, setBlobUrl] = useState(null);
 
   const displayImage = getDisplayImageUrl(drug.image);
   const displayLeaflet = getDisplayImageUrl(drug.leaflet);
@@ -578,26 +584,39 @@ const DetailModal = ({ drug, onClose, onEdit, onDelete, isAdmin }) => {
   const InfoItem = ({ icon, label, value }) => (<div><div className="flex items-center gap-1 text-slate-500 text-xs mb-1">{icon} {label}</div><div className="font-medium text-slate-800">{value || "-"}</div></div>);
   const Row = ({ label, value }) => (<div className="flex justify-between items-start text-sm"><span className="text-slate-500 min-w-[100px] shrink-0">{label}:</span><span className="text-slate-800 font-medium text-right flex-1 whitespace-pre-wrap">{value || "-"}</span></div>);
 
+  // ฟังก์ชันเปิด PDF
   const handleOpenLeaflet = () => {
-    if (displayLeaflet && displayLeaflet.startsWith('data:application/pdf')) {
-      try {
-        const blob = base64ToBlob(displayLeaflet);
-        const url = URL.createObjectURL(blob);
-        setBlobUrl(url);
-      } catch (e) {
-        console.error("Error creating blob", e);
-        setBlobUrl(displayLeaflet);
+    if (!displayLeaflet) return;
+
+    // 1. แปลงไฟล์เตรียมไว้ก่อน
+    let urlToOpen = displayLeaflet;
+    if (displayLeaflet.startsWith('data:application/pdf')) {
+      const blob = base64ToBlob(displayLeaflet);
+      if (blob) {
+        urlToOpen = URL.createObjectURL(blob);
       }
-    } else {
-      setBlobUrl(displayLeaflet);
     }
-    setShowLeaflet(true);
+    setBlobUrl(urlToOpen);
+
+    // 2. ตรวจสอบว่าเป็น iOS (iPhone/iPad) หรือไม่?
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    if (isIOS) {
+      // 3A. ถ้าเป็น iOS -> เปิด Tab ใหม่ทันที (แก้ปัญหาจบ 100%)
+      window.open(urlToOpen, '_blank');
+    } else {
+      // 3B. ถ้าเป็น Android หรือ PC -> เปิด Modal ในหน้าเดิม (สวยงามกว่า)
+      setShowLeafletModal(true);
+    }
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      
+      {/* --- ส่วน Modal รายละเอียดหลัก --- */}
       <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         
+        {/* Header */}
         <div className="bg-slate-800 text-white p-4 flex justify-between items-center sticky top-0 z-10">
           <div className="overflow-hidden"><h2 className="text-xl font-bold truncate pr-2">{drug.genericName}</h2><p className="text-slate-300 text-sm truncate">{drug.brandName}</p></div>
           <div className="flex items-center gap-2 shrink-0">
@@ -605,6 +624,7 @@ const DetailModal = ({ drug, onClose, onEdit, onDelete, isAdmin }) => {
           </div>
         </div>
 
+        {/* Content */}
         <div className="p-0 overflow-y-auto custom-scrollbar bg-white">
           <div className="w-full h-64 bg-slate-100 flex items-center justify-center relative"><MediaDisplay src={displayImage} alt={drug.genericName} className="w-full h-full object-contain" isPdf={isPdf(displayImage)} /><div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">รูปผลิตภัณฑ์</div></div>
           <div className="p-6 space-y-6">
@@ -613,27 +633,32 @@ const DetailModal = ({ drug, onClose, onEdit, onDelete, isAdmin }) => {
             <div className="space-y-4"><h3 className="font-semibold text-slate-800 flex items-center gap-2"><Shield size={18} className="text-emerald-500" /> การสั่งใช้และกฎหมาย</h3><div className="bg-slate-50 p-4 rounded-lg space-y-3"><Row label="ประเภทบัญชียา" value={drug.category} /><Row label="แพทย์ผู้สามารถสั่งใช้" value={drug.prescriber} /><Row label="สามารถสั่งใช้ได้ใน" value={drug.usageType} /></div></div>
             {drug.type === 'injection' && (<div className="space-y-4"><h3 className="font-semibold text-slate-800 flex items-center gap-2"><Thermometer size={18} className="text-rose-500" /> การผสมและการเก็บรักษา</h3><div className="bg-rose-50 p-4 rounded-lg space-y-3 border border-rose-100"><Row label="สารละลายที่ใช้" value={drug.diluent} /><Row label="ความคงตัว" value={drug.stability} /><Row label="วิธีการบริหาร" value={drug.administration} /></div></div>)}
             
+            {/* ปุ่มดู Leaflet (กดแล้วจะเช็คเองว่าเป็น iOS หรือ PC) */}
             {drug.leaflet && (<button onClick={handleOpenLeaflet} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"><FileText size={20} /> ดูเอกสารกำกับยา (Leaflet)</button>)}
           </div>
         </div>
       </div>
 
-      {showLeaflet && (
+      {/* --- ส่วน Modal แสดง PDF (เฉพาะ PC/Android) --- */}
+      {showLeafletModal && (
         <div className="fixed inset-0 bg-slate-900 z-[9999] flex flex-col h-screen w-screen"> 
-          <div className="flex justify-between items-center p-4 bg-slate-800 text-white shadow-md shrink-0">
-             <h3 className="font-bold flex items-center gap-2"><FileText size={20}/> เอกสารกำกับยา</h3>
-             <button onClick={() => setShowLeaflet(false)} className="p-2 bg-slate-700 hover:bg-slate-600 rounded-full"><X size={24}/></button>
+          
+          {/* Header แบบเรียบง่าย (เอาชื่อยาตรงกลางออก เพื่อไม่ให้บัง PDF Viewer) */}
+          <div className="flex justify-between items-center p-3 bg-slate-800 text-white shadow-md shrink-0">
+             <div className="flex items-center gap-2 font-bold text-slate-200">
+                <FileText size={20}/> <span>เอกสารกำกับยา</span>
+             </div>
+             {/* ปุ่มปิดอยู่ขวาสุด */}
+             <button onClick={() => setShowLeafletModal(false)} className="p-2 bg-slate-700 hover:bg-red-500 rounded-full transition-colors"><X size={24}/></button>
           </div>
+
+          {/* PDF Viewer เต็มจอ */}
           <div className="flex-1 bg-slate-200 relative w-full h-full overflow-hidden">
              <iframe src={blobUrl} className="w-full h-full absolute inset-0 border-0" title="PDF Preview"></iframe>
           </div>
-          <div className="p-4 bg-white border-t flex justify-center gap-3 shrink-0">
-             <a href={blobUrl} download={`leaflet-${drug.genericName}.pdf`} className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-bold shadow hover:bg-blue-700 active:scale-95 transition-transform">
-               <ExternalLink size={20} /> ดาวน์โหลด / เปิดไฟล์
-             </a>
-          </div>
         </div>
       )}
+
     </div>
   );
 };
