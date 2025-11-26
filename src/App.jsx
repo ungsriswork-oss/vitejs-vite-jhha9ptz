@@ -85,60 +85,45 @@ const getDisplayImageUrl = (url) => {
 // --- Components ---
 const MediaDisplay = ({ src, alt, className, isPdf }) => {
   const [hasError, setHasError] = useState(false);
-  useEffect(() => {
-    setHasError(false);
-  }, [src]);
+  useEffect(() => { setHasError(false); }, [src]);
 
   if (!src) {
     return (
-      <div
-        className={`bg-slate-100 flex flex-col items-center justify-center text-slate-400 border border-slate-200 ${className}`}
-      >
-        <ImageIcon size={32} className="mb-2 opacity-50" />
+      <div className={`bg-slate-100 flex flex-col items-center justify-center text-slate-400 border border-slate-200 ${className}`}>
+        <ImageIcon size={32} className="mb-2 opacity-50"/>
         <span className="text-xs text-center px-2">ไม่มีข้อมูล</span>
       </div>
     );
   }
 
-  if (isPdf || src.startsWith('data:application/pdf')) {
+  // --- ส่วนที่แก้ไข: ปรับให้แสดง PDF ได้ทั้งตอนพรีวิวและตอนเปิดเต็มจอ ---
+  if (isPdf || (src.startsWith('data:application/pdf'))) {
     return (
-      <div
-        className={`bg-slate-100 flex flex-col items-center justify-center text-slate-500 border border-slate-200 ${className}`}
-      >
-        <FileIcon size={40} className="text-red-500 mb-2" />
-        <span className="text-xs font-medium">เอกสาร PDF</span>
-        {className.includes('h-64') && (
-          <iframe
-            src={src}
-            className="w-full h-full absolute inset-0"
-            title="PDF Preview"
-          ></iframe>
+      <div className={`bg-slate-100 relative flex flex-col items-center justify-center text-slate-500 border border-slate-200 ${className}`}>
+        {/* ถ้าเป็นหน้าจอใหญ่ (h-full) ให้โชว์ไฟล์ PDF เลย */}
+        {className.includes('h-full') ? (
+           <iframe src={src} className="w-full h-full absolute inset-0" title="PDF Preview"></iframe>
+        ) : (
+           /* ถ้าเป็นจอเล็ก (preview) ให้โชว์แค่ไอคอน */
+           <>
+             <FileIcon size={40} className="text-red-500 mb-2"/>
+             <span className="text-xs font-medium">เอกสาร PDF</span>
+           </>
         )}
       </div>
     );
   }
+  // -------------------------------------------------------------
 
   if (hasError) {
     return (
-      <div
-        className={`bg-slate-100 flex flex-col items-center justify-center text-slate-400 border border-slate-200 ${className}`}
-      >
-        <AlertCircle size={32} className="text-red-400 mb-2" />
-        <span className="text-xs text-center px-2 text-red-500 font-medium">
-          โหลดรูปไม่ได้
-        </span>
+      <div className={`bg-slate-100 flex flex-col items-center justify-center text-slate-400 border border-slate-200 ${className}`}>
+        <AlertCircle size={32} className="text-red-400 mb-2"/>
+        <span className="text-xs text-center px-2 text-red-500 font-medium">โหลดรูปไม่ได้</span>
       </div>
     );
   }
-  return (
-    <img
-      src={src}
-      alt={alt}
-      className={className}
-      onError={() => setHasError(true)}
-      referrerPolicy="no-referrer"
-    />
-  );
+  return <img src={src} alt={alt} className={className} onError={() => setHasError(true)} referrerPolicy="no-referrer" />;
 };
 
 const FileUploader = ({ label, onFileSelect, previewUrl, initialUrl }) => {
