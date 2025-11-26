@@ -237,11 +237,9 @@ const DrugFormModal = ({ initialData, onClose, onSave }) => {
   );
 };
 
-// --- DetailModal ตัวหลักที่ปรับปรุงแล้ว ---
+// --- DetailModal แบบเปิด Tab ใหม่ทันที (Clean Version) ---
 const DetailModal = ({ drug, onClose, onEdit, onDelete, isAdmin }) => {
-  const [showLeafletModal, setShowLeafletModal] = useState(false);
-  const [blobUrl, setBlobUrl] = useState(null);
-
+  // ไม่ต้องมี state สำหรับ Modal แล้ว เพราะเราจะเปิด Tab ใหม่เลย
   const displayImage = getDisplayImageUrl(drug.image);
   const displayLeaflet = getDisplayImageUrl(drug.leaflet);
   const isPdf = (url) => url?.startsWith('data:application/pdf');
@@ -254,89 +252,33 @@ const DetailModal = ({ drug, onClose, onEdit, onDelete, isAdmin }) => {
     if (!displayLeaflet) return;
 
     let urlToOpen = displayLeaflet;
-    // แปลง Base64 เป็น Blob URL เพื่อประสิทธิภาพที่ดีกว่า
+    
+    // แปลงไฟล์เป็น Blob เพื่อให้ Browser เปิดได้รวดเร็ว
     if (displayLeaflet.startsWith('data:application/pdf')) {
       const blob = base64ToBlob(displayLeaflet);
       if (blob) {
         urlToOpen = URL.createObjectURL(blob);
       }
     }
-    setBlobUrl(urlToOpen);
 
-    // เช็คว่าเป็น iOS หรือไม่
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-    if (isIOS) {
-      // iOS: เปิด Tab ใหม่ (ที่คุณชอบอยู่แล้ว)
-      window.open(urlToOpen, '_blank');
-    } else {
-      // Windows/Android: เปิด Modal ในหน้าเดิม
-      setShowLeafletModal(true);
-    }
+    // สั่งเปิด Tab ใหม่ทันที (ใช้ได้ทั้ง Windows, Android, iOS)
+    window.open(urlToOpen, '_blank');
   };
 
-  // --- ส่วนแสดงผล PDF สำหรับ Windows (แก้ไข Layout ให้ปุ่มไม่หาย) ---
-  if (showLeafletModal) {
-    return (
-      <div className="fixed inset-0 bg-slate-900 z-[9999] flex flex-col h-screen w-screen"> 
-          
-          {/* 1. ส่วนหัว (Header) - ล็อคความสูงไว้ ไม่ให้ PDF ดันหาย */}
-          <div className="flex items-center justify-between px-4 py-3 bg-slate-800 text-white shadow-lg shrink-0 z-50 h-16">
-             
-             {/* ปุ่มย้อนกลับ */}
-             <button 
-                onClick={() => setShowLeafletModal(false)}
-                className="flex items-center gap-2 bg-slate-700 hover:bg-blue-600 px-4 py-2 rounded-lg transition-colors border border-slate-600"
-             >
-                <ChevronLeft size={20} />
-                <span className="font-bold">ย้อนกลับ</span>
-             </button>
-
-             {/* ชื่อยา */}
-             <div className="font-semibold text-lg truncate px-4 hidden md:block">
-                {drug.genericName}
-             </div>
-
-             {/* ปุ่มปิด */}
-             <button onClick={() => setShowLeafletModal(false)} className="p-2 bg-red-600/80 hover:bg-red-600 rounded-full transition-colors">
-                <X size={24}/>
-             </button>
-          </div>
-
-          {/* 2. ตัวแสดง PDF - ใช้ flex-1 เพื่อให้ยืดเต็มพื้นที่ที่เหลือ */}
-          <div className="flex-1 bg-slate-200 relative w-full overflow-hidden z-0">
-             <iframe 
-               src={blobUrl} 
-               className="w-full h-full absolute inset-0 border-0" 
-               title="PDF Preview"
-             ></iframe>
-          </div>
-
-          {/* 3. ส่วนท้าย (Footer) - เพิ่มปุ่ม Download ให้เห็นชัดๆ */}
-          <div className="flex justify-center items-center p-3 bg-white border-t border-slate-200 shrink-0 z-50 h-16">
-             <a 
-               href={blobUrl} 
-               download={`leaflet-${drug.genericName}.pdf`}
-               className="flex items-center gap-2 text-blue-700 font-bold hover:bg-blue-50 px-6 py-2 rounded-full border border-blue-200 transition-colors"
-             >
-               <ExternalLink size={18} /> ดาวน์โหลด / ปริ้นท์
-             </a>
-          </div>
-
-      </div>
-    );
-  }
-
-  // --- หน้าต่างข้อมูลยาปกติ (ไม่ได้แก้ส่วนนี้) ---
+  // --- ส่วนแสดงผลหน้าข้อมูลยาปกติ ---
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
       <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        
+        {/* Header */}
         <div className="bg-slate-800 text-white p-4 flex justify-between items-center sticky top-0 z-10">
           <div className="overflow-hidden"><h2 className="text-xl font-bold truncate pr-2">{drug.genericName}</h2><p className="text-slate-300 text-sm truncate">{drug.brandName}</p></div>
           <div className="flex items-center gap-2 shrink-0">
             {isAdmin && (<><button onClick={onEdit} className="p-2 bg-slate-700 hover:bg-slate-600 rounded-full transition-colors text-yellow-400" title="แก้ไข"><Edit size={18} /></button><button onClick={() => onDelete(drug.id)} className="p-2 bg-slate-700 hover:bg-red-600 rounded-full transition-colors text-red-400 hover:text-white" title="ลบ"><Trash2 size={18} /></button></>)}<button onClick={onClose} className="p-2 hover:bg-slate-700 rounded-full transition-colors"><X size={24} /></button>
           </div>
         </div>
+
+        {/* Content */}
         <div className="p-0 overflow-y-auto custom-scrollbar bg-white">
           <div className="w-full h-64 bg-slate-100 flex items-center justify-center relative"><MediaDisplay src={displayImage} alt={drug.genericName} className="w-full h-full object-contain" isPdf={isPdf(displayImage)} /><div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">รูปผลิตภัณฑ์</div></div>
           <div className="p-6 space-y-6">
@@ -344,7 +286,16 @@ const DetailModal = ({ drug, onClose, onEdit, onDelete, isAdmin }) => {
             <hr className="border-slate-100" />
             <div className="space-y-4"><h3 className="font-semibold text-slate-800 flex items-center gap-2"><Shield size={18} className="text-emerald-500" /> การสั่งใช้และกฎหมาย</h3><div className="bg-slate-50 p-4 rounded-lg space-y-3"><Row label="ประเภทบัญชียา" value={drug.category} /><Row label="แพทย์ผู้สามารถสั่งใช้" value={drug.prescriber} /><Row label="สามารถสั่งใช้ได้ใน" value={drug.usageType} /></div></div>
             {drug.type === 'injection' && (<div className="space-y-4"><h3 className="font-semibold text-slate-800 flex items-center gap-2"><Thermometer size={18} className="text-rose-500" /> การผสมและการเก็บรักษา</h3><div className="bg-rose-50 p-4 rounded-lg space-y-3 border border-rose-100"><Row label="สารละลายที่ใช้" value={drug.diluent} /><Row label="ความคงตัว" value={drug.stability} /><Row label="วิธีการบริหาร" value={drug.administration} /></div></div>)}
-            {drug.leaflet && (<button onClick={handleOpenLeaflet} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"><FileText size={20} /> ดูเอกสารกำกับยา (Leaflet)</button>)}
+            
+            {/* ปุ่มกดดู PDF - พอกดปุ๊บ จะเปิดหน้าใหม่ทันที */}
+            {drug.leaflet && (
+              <button 
+                onClick={handleOpenLeaflet} 
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors shadow-sm"
+              >
+                <FileText size={20} /> ดูเอกสารกำกับยา (PDF)
+              </button>
+            )}
           </div>
         </div>
       </div>
