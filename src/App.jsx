@@ -201,12 +201,12 @@ const DrugCard = ({ drug, onClick }) => (
 );
 
 const DrugFormModal = ({ initialData, onClose, onSave }) => {
-  // เพิ่ม note: "" เข้าไปใน state
+  // 1. เพิ่มตัวแปร 'note' เข้าไปใน formData
   const [formData, setFormData] = useState(initialData || {
     genericName: "", brandName: "", manufacturer: "", dosage: "",
     category: "ยาพื้นฐาน (basic list ) [บัญชี ก และ ข เดิม]", 
     prescriber: "", usageType: "", administration: "", 
-    diluent: "", stability: "", note: "", // <--- เพิ่มค่าเริ่มต้นตรงนี้
+    diluent: "", stability: "", note: "", 
     image: "", leaflet: "", type: "injection"
   });
 
@@ -215,40 +215,63 @@ const DrugFormModal = ({ initialData, onClose, onSave }) => {
   return (
     <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
       <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        
+        {/* Header */}
         <div className="bg-slate-800 text-white p-4 flex justify-between items-center sticky top-0"><h2 className="text-xl font-bold">{initialData ? 'แก้ไขข้อมูลยา' : 'เพิ่มยาใหม่'}</h2><button onClick={onClose}><X size={24} /></button></div>
+        
+        {/* Content */}
         <div className="p-6 overflow-y-auto custom-scrollbar space-y-4">
            <div className="grid grid-cols-2 gap-4">
+             
+             {/* ข้อมูลทั่วไป */}
              <div className="col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">ชื่อยาสามัญ *</label><input name="genericName" value={formData.genericName} onChange={handleChange} className="w-full p-2 border rounded-lg" required /></div>
              <div className="col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">ชื่อยี่ห้อ</label><input name="brandName" value={formData.brandName} onChange={handleChange} className="w-full p-2 border rounded-lg" /></div>
              <div><label className="block text-sm font-medium text-slate-700 mb-1">รูปแบบ</label><input name="dosage" value={formData.dosage} onChange={handleChange} className="w-full p-2 border rounded-lg" /></div>
              <div><label className="block text-sm font-medium text-slate-700 mb-1">ประเภท</label><select name="type" value={formData.type} onChange={handleChange} className="w-full p-2 border rounded-lg"><option value="injection">ยาฉีด</option><option value="oral">ยากิน</option><option value="sublingual">ยาอมใต้ลิ้น</option><option value="external">ยาใช้เฉพาะที่/ยาใช้ภายนอก</option></select></div>
              <div className="col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">บริษัทผู้ผลิต</label><input name="manufacturer" value={formData.manufacturer} onChange={handleChange} className="w-full p-2 border rounded-lg" /></div>
+             
              <div className="col-span-2"><hr className="my-2"/></div>
+             
+             {/* ข้อมูลการสั่งใช้ */}
              <div className="col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">ประเภทบัญชียา</label><select name="category" value={formData.category} onChange={handleChange} className="w-full p-2 border rounded-lg"><option>ยาพื้นฐาน (basic list ) [บัญชี ก และ ข เดิม]</option><option>ยาทางเลือก (supplemental list) [บัญชี ค เดิม]</option><option>ยาเฉพาะโรค (exclusive list) [บัญชี ง เดิม]</option><option>ยาสำหรับโครงการพิเศษของหน่วยงานของรัฐ (restricted list; R1) [บัญชี จ.1 เดิม]</option><option>ยาพิเศษที่กำหนดแนวทางการใช้ยา (restricted list; R2) [บัญชี จ.2 เดิม]</option></select></div>
              <div><label className="block text-sm font-medium text-slate-700 mb-1">แพทย์ผู้สามารถสั่งใช้</label><input name="prescriber" value={formData.prescriber} onChange={handleChange} className="w-full p-2 border rounded-lg" /></div>
              <div><label className="block text-sm font-medium text-slate-700 mb-1">สามารถสั่งใช้ได้ใน</label><input name="usageType" value={formData.usageType} onChange={handleChange} className="w-full p-2 border rounded-lg" /></div>
              
+             {/* เฉพาะยาฉีด (ถ้าไม่ใช่ยาฉีด ส่วนนี้จะหายไป) */}
              {formData.type === 'injection' && (
-               <><div className="col-span-2 bg-rose-50 p-3 rounded-lg border border-rose-100 mt-2"><p className="text-rose-700 text-sm font-bold mb-2">ข้อมูลสำหรับยาฉีด</p><label className="block text-sm font-medium text-slate-700 mb-1">สารละลายที่ใช้</label><textarea name="diluent" rows="3" value={formData.diluent} onChange={handleChange} className="w-full p-2 border rounded-lg bg-white mb-2 resize-y" /><label className="block text-sm font-medium text-slate-700 mb-1">ความคงตัว</label><textarea name="stability" rows="3" value={formData.stability} onChange={handleChange} className="w-full p-2 border rounded-lg bg-white resize-y mb-2"/><label className="block text-sm font-medium text-slate-700 mb-1">วิธีการบริหาร</label><textarea name="administration" rows="2" value={formData.administration} onChange={handleChange} className="w-full p-2 border rounded-lg bg-white resize-y" placeholder="เช่น รับประทานหลังอาหาร, IV drip 30 นาที..."/></div></>
+               <div className="col-span-2 bg-rose-50 p-3 rounded-lg border border-rose-100 mt-2">
+                 <p className="text-rose-700 text-sm font-bold mb-2">ข้อมูลสำหรับยาฉีด</p>
+                 <label className="block text-sm font-medium text-slate-700 mb-1">สารละลายที่ใช้</label>
+                 <textarea name="diluent" rows="2" value={formData.diluent} onChange={handleChange} className="w-full p-2 border rounded-lg bg-white mb-2 resize-y" />
+                 <label className="block text-sm font-medium text-slate-700 mb-1">ความคงตัว</label>
+                 <textarea name="stability" rows="2" value={formData.stability} onChange={handleChange} className="w-full p-2 border rounded-lg bg-white resize-y mb-2"/>
+                 <label className="block text-sm font-medium text-slate-700 mb-1">วิธีการบริหาร</label>
+                 <textarea name="administration" rows="2" value={formData.administration} onChange={handleChange} className="w-full p-2 border rounded-lg bg-white resize-y" placeholder="เช่น รับประทานหลังอาหาร, IV drip 30 นาที..."/>
+               </div>
              )}
 
-             {/* เพิ่มช่องหมายเหตุตรงนี้ */}
-             <div className="col-span-2 mt-2">
-                <label className="block text-sm font-medium text-slate-700 mb-1 font-bold text-orange-600">หมายเหตุ</label>
+             {/* ช่องหมายเหตุ (แสดงตลอด สำหรับยาทุกประเภท) */}
+             <div className="col-span-2 mt-4">
+                <label className="block text-sm font-bold text-orange-600 mb-1 flex items-center gap-1">
+                  <Info size={16}/> หมายเหตุเพิ่มเติม
+                </label>
                 <textarea 
                   name="note" 
                   rows="2" 
                   value={formData.note || ""} 
                   onChange={handleChange} 
                   className="w-full p-2 border rounded-lg bg-orange-50 focus:bg-white transition-colors resize-y border-orange-200 focus:border-orange-400" 
-                  placeholder="ระบุข้อมูลเพิ่มเติม (ถ้ามี)..." 
+                  placeholder="ระบุข้อมูลเพิ่มเติม หรือข้อควรระวัง (ถ้ามี)..." 
                 />
              </div>
 
              <div className="col-span-2"><hr className="my-2"/></div>
+             
+             {/* ส่วนอัปโหลดรูป */}
              <FileUploader label="รูปผลิตภัณฑ์" initialUrl={getDisplayImageUrl(formData.image)} previewUrl={formData.image} onFileSelect={(base64) => setFormData(prev => ({...prev, image: base64}))} />
              <FileUploader label="เอกสารกำกับยา (Leaflet)" initialUrl={getDisplayImageUrl(formData.leaflet)} previewUrl={formData.leaflet} onFileSelect={(base64) => setFormData(prev => ({...prev, leaflet: base64}))} />
           </div>
+          
           <button onClick={() => onSave(formData)} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold flex items-center justify-center gap-2 mt-4"><Save size={20} /> บันทึกข้อมูล</button>
         </div>
       </div>
