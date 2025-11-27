@@ -201,13 +201,17 @@ const DrugCard = ({ drug, onClick }) => (
 );
 
 const DrugFormModal = ({ initialData, onClose, onSave }) => {
+  // เพิ่ม note: "" เข้าไปใน state
   const [formData, setFormData] = useState(initialData || {
     genericName: "", brandName: "", manufacturer: "", dosage: "",
     category: "ยาพื้นฐาน (basic list ) [บัญชี ก และ ข เดิม]", 
     prescriber: "", usageType: "", administration: "", 
-    diluent: "", stability: "", image: "", leaflet: "", type: "injection"
+    diluent: "", stability: "", note: "", // <--- เพิ่มค่าเริ่มต้นตรงนี้
+    image: "", leaflet: "", type: "injection"
   });
+
   const handleChange = (e) => { const { name, value } = e.target; setFormData(prev => ({ ...prev, [name]: value })); };
+
   return (
     <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
       <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -223,9 +227,24 @@ const DrugFormModal = ({ initialData, onClose, onSave }) => {
              <div className="col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">ประเภทบัญชียา</label><select name="category" value={formData.category} onChange={handleChange} className="w-full p-2 border rounded-lg"><option>ยาพื้นฐาน (basic list ) [บัญชี ก และ ข เดิม]</option><option>ยาทางเลือก (supplemental list) [บัญชี ค เดิม]</option><option>ยาเฉพาะโรค (exclusive list) [บัญชี ง เดิม]</option><option>ยาสำหรับโครงการพิเศษของหน่วยงานของรัฐ (restricted list; R1) [บัญชี จ.1 เดิม]</option><option>ยาพิเศษที่กำหนดแนวทางการใช้ยา (restricted list; R2) [บัญชี จ.2 เดิม]</option></select></div>
              <div><label className="block text-sm font-medium text-slate-700 mb-1">แพทย์ผู้สามารถสั่งใช้</label><input name="prescriber" value={formData.prescriber} onChange={handleChange} className="w-full p-2 border rounded-lg" /></div>
              <div><label className="block text-sm font-medium text-slate-700 mb-1">สามารถสั่งใช้ได้ใน</label><input name="usageType" value={formData.usageType} onChange={handleChange} className="w-full p-2 border rounded-lg" /></div>
+             
              {formData.type === 'injection' && (
                <><div className="col-span-2 bg-rose-50 p-3 rounded-lg border border-rose-100 mt-2"><p className="text-rose-700 text-sm font-bold mb-2">ข้อมูลสำหรับยาฉีด</p><label className="block text-sm font-medium text-slate-700 mb-1">สารละลายที่ใช้</label><textarea name="diluent" rows="3" value={formData.diluent} onChange={handleChange} className="w-full p-2 border rounded-lg bg-white mb-2 resize-y" /><label className="block text-sm font-medium text-slate-700 mb-1">ความคงตัว</label><textarea name="stability" rows="3" value={formData.stability} onChange={handleChange} className="w-full p-2 border rounded-lg bg-white resize-y mb-2"/><label className="block text-sm font-medium text-slate-700 mb-1">วิธีการบริหาร</label><textarea name="administration" rows="2" value={formData.administration} onChange={handleChange} className="w-full p-2 border rounded-lg bg-white resize-y" placeholder="เช่น รับประทานหลังอาหาร, IV drip 30 นาที..."/></div></>
              )}
+
+             {/* เพิ่มช่องหมายเหตุตรงนี้ */}
+             <div className="col-span-2 mt-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1 font-bold text-orange-600">หมายเหตุ</label>
+                <textarea 
+                  name="note" 
+                  rows="2" 
+                  value={formData.note || ""} 
+                  onChange={handleChange} 
+                  className="w-full p-2 border rounded-lg bg-orange-50 focus:bg-white transition-colors resize-y border-orange-200 focus:border-orange-400" 
+                  placeholder="ระบุข้อมูลเพิ่มเติม (ถ้ามี)..." 
+                />
+             </div>
+
              <div className="col-span-2"><hr className="my-2"/></div>
              <FileUploader label="รูปผลิตภัณฑ์" initialUrl={getDisplayImageUrl(formData.image)} previewUrl={formData.image} onFileSelect={(base64) => setFormData(prev => ({...prev, image: base64}))} />
              <FileUploader label="เอกสารกำกับยา (Leaflet)" initialUrl={getDisplayImageUrl(formData.leaflet)} previewUrl={formData.leaflet} onFileSelect={(base64) => setFormData(prev => ({...prev, leaflet: base64}))} />
@@ -237,9 +256,11 @@ const DrugFormModal = ({ initialData, onClose, onSave }) => {
   );
 };
 
-// --- DetailModal แบบเปิด Tab ใหม่ทันที (Clean Version) ---
+// --- DetailModal (รวมฟีเจอร์ PDF และแสดงหมายเหตุ) ---
 const DetailModal = ({ drug, onClose, onEdit, onDelete, isAdmin }) => {
-  // ไม่ต้องมี state สำหรับ Modal แล้ว เพราะเราจะเปิด Tab ใหม่เลย
+  const [showLeafletModal, setShowLeafletModal] = useState(false);
+  const [blobUrl, setBlobUrl] = useState(null);
+
   const displayImage = getDisplayImageUrl(drug.image);
   const displayLeaflet = getDisplayImageUrl(drug.leaflet);
   const isPdf = (url) => url?.startsWith('data:application/pdf');
@@ -252,20 +273,40 @@ const DetailModal = ({ drug, onClose, onEdit, onDelete, isAdmin }) => {
     if (!displayLeaflet) return;
 
     let urlToOpen = displayLeaflet;
-    
-    // แปลงไฟล์เป็น Blob เพื่อให้ Browser เปิดได้รวดเร็ว
     if (displayLeaflet.startsWith('data:application/pdf')) {
       const blob = base64ToBlob(displayLeaflet);
       if (blob) {
         urlToOpen = URL.createObjectURL(blob);
       }
     }
+    setBlobUrl(urlToOpen);
 
-    // สั่งเปิด Tab ใหม่ทันที (ใช้ได้ทั้ง Windows, Android, iOS)
-    window.open(urlToOpen, '_blank');
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    if (isIOS) {
+      window.open(urlToOpen, '_blank');
+    } else {
+      setShowLeafletModal(true);
+    }
   };
 
-  // --- ส่วนแสดงผลหน้าข้อมูลยาปกติ ---
+  // --- ส่วนแสดงผล PDF (Windows) ---
+  if (showLeafletModal) {
+    return (
+      <div className="fixed inset-0 bg-slate-900 z-[9999] flex flex-col h-screen w-screen"> 
+          <div className="flex items-center justify-between p-3 bg-slate-800 text-white shadow-md shrink-0">
+             <button onClick={() => setShowLeafletModal(false)} className="flex items-center gap-2 text-white bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg transition-colors border border-slate-600 hover:border-slate-500 shadow-sm"><ChevronLeft size={24} /><span className="font-bold">ย้อนกลับ</span></button>
+             <div className="flex items-center gap-2 text-slate-300 font-medium"><FileText size={18} className="hidden md:block"/><span className="hidden md:inline">เอกสารกำกับยา: {drug.genericName}</span><span className="md:hidden">เอกสารกำกับยา</span></div>
+             <button onClick={() => setShowLeafletModal(false)} className="p-2 bg-slate-700 hover:bg-red-500 rounded-full transition-colors"><X size={24}/></button>
+          </div>
+          <div className="flex-1 bg-slate-200 relative w-full h-full overflow-hidden">
+             <iframe src={blobUrl} className="w-full h-full absolute inset-0 border-0" title="PDF Preview"></iframe>
+          </div>
+      </div>
+    );
+  }
+
+  // --- หน้าต่างข้อมูลยาปกติ ---
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
       <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -283,19 +324,24 @@ const DetailModal = ({ drug, onClose, onEdit, onDelete, isAdmin }) => {
           <div className="w-full h-64 bg-slate-100 flex items-center justify-center relative"><MediaDisplay src={displayImage} alt={drug.genericName} className="w-full h-full object-contain" isPdf={isPdf(displayImage)} /><div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">รูปผลิตภัณฑ์</div></div>
           <div className="p-6 space-y-6">
             <div className="grid grid-cols-2 gap-4"><InfoItem icon={<Building size={16}/>} label="ผู้ผลิต" value={drug.manufacturer} /><InfoItem icon={<Pill size={16}/>} label="รูปแบบ/ความแรง" value={drug.dosage} /></div>
+            
             <hr className="border-slate-100" />
+            
             <div className="space-y-4"><h3 className="font-semibold text-slate-800 flex items-center gap-2"><Shield size={18} className="text-emerald-500" /> การสั่งใช้และกฎหมาย</h3><div className="bg-slate-50 p-4 rounded-lg space-y-3"><Row label="ประเภทบัญชียา" value={drug.category} /><Row label="แพทย์ผู้สามารถสั่งใช้" value={drug.prescriber} /><Row label="สามารถสั่งใช้ได้ใน" value={drug.usageType} /></div></div>
+            
             {drug.type === 'injection' && (<div className="space-y-4"><h3 className="font-semibold text-slate-800 flex items-center gap-2"><Thermometer size={18} className="text-rose-500" /> การผสมและการเก็บรักษา</h3><div className="bg-rose-50 p-4 rounded-lg space-y-3 border border-rose-100"><Row label="สารละลายที่ใช้" value={drug.diluent} /><Row label="ความคงตัว" value={drug.stability} /><Row label="วิธีการบริหาร" value={drug.administration} /></div></div>)}
             
-            {/* ปุ่มกดดู PDF - พอกดปุ๊บ จะเปิดหน้าใหม่ทันที */}
-            {drug.leaflet && (
-              <button 
-                onClick={handleOpenLeaflet} 
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors shadow-sm"
-              >
-                <FileText size={20} /> ดูเอกสารกำกับยา (PDF)
-              </button>
+            {/* ส่วนแสดงหมายเหตุ (Note) */}
+            {drug.note && (
+              <div className="bg-orange-50 border border-orange-100 p-4 rounded-lg">
+                <h3 className="font-bold text-orange-800 flex items-center gap-2 mb-2 text-sm">
+                  <Info size={16} /> หมายเหตุเพิ่มเติม
+                </h3>
+                <p className="text-slate-700 text-sm whitespace-pre-wrap">{drug.note}</p>
+              </div>
             )}
+
+            {drug.leaflet && (<button onClick={handleOpenLeaflet} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"><FileText size={20} /> ดูเอกสารกำกับยา (Leaflet)</button>)}
           </div>
         </div>
       </div>
