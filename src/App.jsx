@@ -378,6 +378,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [drugs, setDrugs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(20);
   const [searchTerm, setSearchTerm] = useState("");
   const [drugToDelete, setDrugToDelete] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false); 
@@ -389,7 +390,7 @@ export default function App() {
 
   useEffect(() => { const initAuth = async () => { try { await signInAnonymously(auth); } catch (error) { console.error("Auth error:", error); } }; initAuth(); const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => setUser(currentUser)); return () => unsubscribeAuth(); }, []);
   
-  // --- useEffect สำหรับดึงข้อมูล (ฉบับสมบูรณ์) ---
+  // --- useEffect สำหรับดึงข้อมูล (ฉบับแก้ไขเพิ่มปุ่มโหลด) ---
   useEffect(() => {
     if (!user) return;
 
@@ -397,21 +398,19 @@ export default function App() {
     const drugsRef = collection(db, 'drugs');
 
     if (searchTerm.trim() === "") {
-      // 1. กรณีไม่ได้ค้นหา: ดึงมาแค่ 20 ตัวแรก
-      q = query(drugsRef, orderBy('genericName'), limit(20)); 
+      // เปลี่ยนเลข 20 เป็น visibleCount
+      q = query(drugsRef, orderBy('genericName'), limit(visibleCount)); 
     } else {
-      // 2. กรณีค้นหา: แปลงตัวแรกเป็นตัวใหญ่ แล้วค้นหาผ่าน Server
       const searchKey = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
       
       q = query(
         drugsRef, 
         where('genericName', '>=', searchKey), 
         where('genericName', '<=', searchKey + '\uf8ff'),
-        limit(20)
+        limit(visibleCount) // เปลี่ยนตรงนี้ด้วย
       );
     }
 
-    // ส่วนสำคัญที่ห้ามหาย!
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const drugList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setDrugs(drugList);
@@ -424,7 +423,7 @@ export default function App() {
     });
 
     return () => unsubscribe();
-  }, [user, searchTerm]);
+  }, [user, searchTerm, visibleCount]); // <--- สำคัญมาก! ต้องมี visibleCount ในวงเล็บนี้
 
   const handleAdminToggle = () => { if (isAdmin) { setIsAdmin(false); } else { setIsLoginModalOpen(true); } };
   const handleSaveDrug = async (drugData) => { try { const collRef = collection(db, 'drugs'); if (drugData.id) { const docRef = doc(db, 'drugs', drugData.id); const { id, ...dataToUpdate } = drugData; await updateDoc(docRef, dataToUpdate); } else { await addDoc(collRef, drugData); } setIsFormOpen(false); setSelectedDrug(null); setIsEditing(false); } catch (error) { console.error("Error saving drug:", error); alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล (ขนาดรูปอาจใหญ่เกิน 1MB หรือไม่มีสิทธิ์เข้าถึง)"); } };
@@ -443,8 +442,32 @@ export default function App() {
         </div>
       </header>
       <main className="max-w-md mx-auto p-4 pb-20">
-        {permissionError && (<div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded shadow-sm flex items-start gap-3"><AlertTriangle size={24} className="shrink-0" /><div><p className="font-bold">ไม่สามารถเข้าถึงข้อมูลได้</p><p className="text-sm">กรุณาตั้งค่า <strong>Firestore Rules</strong> ใน Firebase Console ให้เป็น <code>allow read, write: if true;</code></p><a href={consoleUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-blue-600 hover:underline mt-2 text-sm font-semibold">ไปที่หน้าตั้งค่า <ExternalLink size={14}/></a></div></div>)}
-        {loading ? (<div className="text-center mt-10 text-slate-500 animate-pulse">กำลังโหลดข้อมูล...</div>) : filteredDrugs.length > 0 ? (filteredDrugs.map(drug => (<DrugCard key={drug.id} drug={drug} onClick={setSelectedDrug} />))) : (<div className="text-center text-slate-400 mt-10 flex flex-col items-center gap-3"><Pill size={48} className="opacity-20" /><p>ไม่พบข้อมูลยา</p>{drugs.length === 0 && isAdmin && (<button onClick={handleAddSeedData} className="text-blue-500 text-sm hover:underline">+ เพิ่มข้อมูลตัวอย่าง</button>)}</div>)}
+      {permissionError && (<div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded shadow-sm flex items-start gap-3"><AlertTriangle size={24} className="shrink-0" /><div><p className="font-bold">ไม่สามารถเข้าถึงข้อมูลได้</p><p className="text-sm">กรุณาตั้งค่า <strong>Firestore Rules</strong> ใน Firebase Console ให้เป็น <code>allow read, write: if true;</code></p><a href={consoleUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-blue-600 hover:underline mt-2 text-sm font-semibold">ไปที่หน้าตั้งค่า <ExternalLink size={14}/></a></div></div>)}
+        
+        {loading ? (
+           <div className="text-center mt-10 text-slate-500 animate-pulse">กำลังโหลดข้อมูล...</div>
+        ) : filteredDrugs.length > 0 ? (
+           <>
+             {/* รายชื่อยา */}
+             {filteredDrugs.map(drug => (<DrugCard key={drug.id} drug={drug} onClick={setSelectedDrug} />))}
+             
+             {/* ปุ่มโหลดเพิ่มเติม (จะโชว์เฉพาะตอนมียา) */}
+             <div className="mt-6 text-center pb-8">
+                <button 
+                  onClick={() => setVisibleCount(prev => prev + 20)}
+                  className="bg-slate-200 text-slate-600 px-6 py-2 rounded-full hover:bg-slate-300 transition-colors text-sm font-bold shadow-sm"
+                >
+                  โหลดเพิ่มเติม...
+                </button>
+             </div>
+           </>
+        ) : (
+           /* กรณีไม่พบข้อมูล */
+           <div className="text-center text-slate-400 mt-10 flex flex-col items-center gap-3">
+             <Pill size={48} className="opacity-20" /><p>ไม่พบข้อมูลยา</p>
+             {drugs.length === 0 && isAdmin && (<button onClick={handleAddSeedData} className="text-blue-500 text-sm hover:underline">+ เพิ่มข้อมูลตัวอย่าง</button>)}
+           </div>
+        )}
       </main>
       {isAdmin && (<div className="fixed bottom-6 right-6 z-40"><button onClick={() => { setIsEditing(false); setIsFormOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center gap-2"><Plus size={24} /> <span className="font-bold hidden md:inline">เพิ่มยา</span></button></div>)}
       {selectedDrug && !isEditing && (<DetailModal drug={selectedDrug} onClose={() => setSelectedDrug(null)} onEdit={() => { setIsEditing(true); setIsFormOpen(true); }} onDelete={requestDeleteDrug} isAdmin={isAdmin} />)}
