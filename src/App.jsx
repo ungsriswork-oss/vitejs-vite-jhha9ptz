@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, Pill, Building, FileText, Info, Shield, Syringe, Thermometer, X, ChevronRight, ChevronLeft, Plus, Save, Trash2, Edit, Image as ImageIcon, UploadCloud, File as FileIcon, AlertCircle, Lock, Unlock, AlertTriangle, ExternalLink } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query } from 'firebase/firestore';
+import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, limit, orderBy, where } from 'firebase/firestore';
 
 // --- Firebase Configuration ---
 const firebaseConfig = {
@@ -389,9 +389,29 @@ export default function App() {
 
   useEffect(() => { const initAuth = async () => { try { await signInAnonymously(auth); } catch (error) { console.error("Auth error:", error); } }; initAuth(); const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => setUser(currentUser)); return () => unsubscribeAuth(); }, []);
   
+  // --- useEffect สำหรับดึงข้อมูล (ฉบับสมบูรณ์) ---
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, 'drugs'));
+
+    let q;
+    const drugsRef = collection(db, 'drugs');
+
+    if (searchTerm.trim() === "") {
+      // 1. กรณีไม่ได้ค้นหา: ดึงมาแค่ 20 ตัวแรก
+      q = query(drugsRef, orderBy('genericName'), limit(20)); 
+    } else {
+      // 2. กรณีค้นหา: แปลงตัวแรกเป็นตัวใหญ่ แล้วค้นหาผ่าน Server
+      const searchKey = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
+      
+      q = query(
+        drugsRef, 
+        where('genericName', '>=', searchKey), 
+        where('genericName', '<=', searchKey + '\uf8ff'),
+        limit(20)
+      );
+    }
+
+    // ส่วนสำคัญที่ห้ามหาย!
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const drugList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setDrugs(drugList);
@@ -402,8 +422,9 @@ export default function App() {
       setLoading(false); 
       if (error.code === 'permission-denied') setPermissionError(true);
     });
+
     return () => unsubscribe();
-  }, [user]);
+  }, [user, searchTerm]);
 
   const handleAdminToggle = () => { if (isAdmin) { setIsAdmin(false); } else { setIsLoginModalOpen(true); } };
   const handleSaveDrug = async (drugData) => { try { const collRef = collection(db, 'drugs'); if (drugData.id) { const docRef = doc(db, 'drugs', drugData.id); const { id, ...dataToUpdate } = drugData; await updateDoc(docRef, dataToUpdate); } else { await addDoc(collRef, drugData); } setIsFormOpen(false); setSelectedDrug(null); setIsEditing(false); } catch (error) { console.error("Error saving drug:", error); alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล (ขนาดรูปอาจใหญ่เกิน 1MB หรือไม่มีสิทธิ์เข้าถึง)"); } };
