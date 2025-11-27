@@ -279,11 +279,9 @@ const DrugFormModal = ({ initialData, onClose, onSave }) => {
   );
 };
 
-// --- DetailModal (รวมฟีเจอร์ PDF และแสดงหมายเหตุ) ---
+// --- DetailModal แบบเปิด Tab ใหม่ทันที (Clean Version) ---
 const DetailModal = ({ drug, onClose, onEdit, onDelete, isAdmin }) => {
-  const [showLeafletModal, setShowLeafletModal] = useState(false);
-  const [blobUrl, setBlobUrl] = useState(null);
-
+  // ไม่ต้องมี state สำหรับ Modal แล้ว เพราะเราจะเปิด Tab ใหม่เลย
   const displayImage = getDisplayImageUrl(drug.image);
   const displayLeaflet = getDisplayImageUrl(drug.leaflet);
   const isPdf = (url) => url?.startsWith('data:application/pdf');
@@ -296,40 +294,20 @@ const DetailModal = ({ drug, onClose, onEdit, onDelete, isAdmin }) => {
     if (!displayLeaflet) return;
 
     let urlToOpen = displayLeaflet;
+    
+    // แปลงไฟล์เป็น Blob เพื่อให้ Browser เปิดได้รวดเร็ว
     if (displayLeaflet.startsWith('data:application/pdf')) {
       const blob = base64ToBlob(displayLeaflet);
       if (blob) {
         urlToOpen = URL.createObjectURL(blob);
       }
     }
-    setBlobUrl(urlToOpen);
 
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-    if (isIOS) {
-      window.open(urlToOpen, '_blank');
-    } else {
-      setShowLeafletModal(true);
-    }
+    // สั่งเปิด Tab ใหม่ทันที (ใช้ได้ทั้ง Windows, Android, iOS)
+    window.open(urlToOpen, '_blank');
   };
 
-  // --- ส่วนแสดงผล PDF (Windows) ---
-  if (showLeafletModal) {
-    return (
-      <div className="fixed inset-0 bg-slate-900 z-[9999] flex flex-col h-screen w-screen"> 
-          <div className="flex items-center justify-between p-3 bg-slate-800 text-white shadow-md shrink-0">
-             <button onClick={() => setShowLeafletModal(false)} className="flex items-center gap-2 text-white bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg transition-colors border border-slate-600 hover:border-slate-500 shadow-sm"><ChevronLeft size={24} /><span className="font-bold">ย้อนกลับ</span></button>
-             <div className="flex items-center gap-2 text-slate-300 font-medium"><FileText size={18} className="hidden md:block"/><span className="hidden md:inline">เอกสารกำกับยา: {drug.genericName}</span><span className="md:hidden">เอกสารกำกับยา</span></div>
-             <button onClick={() => setShowLeafletModal(false)} className="p-2 bg-slate-700 hover:bg-red-500 rounded-full transition-colors"><X size={24}/></button>
-          </div>
-          <div className="flex-1 bg-slate-200 relative w-full h-full overflow-hidden">
-             <iframe src={blobUrl} className="w-full h-full absolute inset-0 border-0" title="PDF Preview"></iframe>
-          </div>
-      </div>
-    );
-  }
-
-  // --- หน้าต่างข้อมูลยาปกติ ---
+  // --- ส่วนแสดงผลหน้าข้อมูลยาปกติ ---
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
       <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -364,7 +342,15 @@ const DetailModal = ({ drug, onClose, onEdit, onDelete, isAdmin }) => {
               </div>
             )}
 
-            {drug.leaflet && (<button onClick={handleOpenLeaflet} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"><FileText size={20} /> ดูเอกสารกำกับยา (Leaflet)</button>)}
+            {/* ปุ่มกดดู PDF - พอกดปุ๊บ จะเปิดหน้าใหม่ทันที */}
+            {drug.leaflet && (
+              <button 
+                onClick={handleOpenLeaflet} 
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors shadow-sm"
+              >
+                <FileText size={20} /> ดูเอกสารกำกับยา (PDF)
+              </button>
+            )}
           </div>
         </div>
       </div>
